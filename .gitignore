@@ -1,0 +1,16 @@
+.idea
+.vscode
+
+venv
+*__pycache__
+*.pyc
+*.ipynb
+db.sqlite3
+.env
+.env-test
+
+media/*
+!.keep
+*.pytest_cache
+*.coverage
+*.mypy_cache

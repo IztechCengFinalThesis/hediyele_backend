@@ -1,0 +1,40 @@
+[flake8]
+max-complexity = 6
+inline-quotes = double
+max-line-length = 122
+extend-ignore = E203
+docstring_style = sphinx
+
+ignore =
+  ; Missing docstring in public module
+  D100,
+  ; Missing docstring in magic method
+  D105,
+  ; Missing docstring in __init__
+  D107,
+  ; Missing docstring in public package
+  D104,
+  ; isort found an import in the wrong position
+  I001,
+  ; isort found an unexpected missing import
+  I005,
+  ; missing trailing comma
+  C812,
+  ; First line should be in imperative mood
+  D401,
+  ; Do not perform function calls in argument defaults.
+  B008,
+
+per-file-ignores =
+  ; all tests
+  test_*.py,tests.py,tests_*.py,*/tests/*,conftest.py:
+  ; Missing docstring in public package
+  D104,
+  ; Use of assert detected.
+  S101,
+  ; Possible SQL injection vector through string-based query construction
+
+exclude =
+  .git,
+  *migrations*,
+

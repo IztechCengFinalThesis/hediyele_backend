@@ -1,16 +1,5 @@
 ## Geliştirme Bilgileri
 
-### Yeni bir projeye başlamak
-
-docker-compose.yml dosyasında şu değişiklikler yapılmalıdır:
-
-- app_postgis yerine user_postgis,
-- app_api yerine user_api,
-- app_redis yerine user_redis,
-- app_bg_tasks yerine user_bg_tasks
-
-Burada "app" proje/servis ismi olup örnek olarak user_postgis, user_api gibi değiştirilmelidir.
-
 ### Başlatma
 1. Proje kökünde bir .env dosyası oluşturun, ortam değişkenlerine aşağıda "Ortam Değişkenleri" bölümünde örnekler verilmiştir.
 2. Projeyi başlatmak için - ```make up```

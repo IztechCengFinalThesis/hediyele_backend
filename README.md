@@ -1,83 +1,68 @@
-<details>
+## Geliştirme Bilgileri
 
-<summary>Информация для разработки</summary>
+### Yeni bir projeye başlamak
 
-## Информация для разработки
+docker-compose.yml dosyasında şu değişiklikler yapılmalıdır:
 
-### Подготовка нового проекта
+- app_postgis yerine user_postgis,
+- app_api yerine user_api,
+- app_redis yerine user_redis,
+- app_bg_tasks yerine user_bg_tasks
 
-В файле docker-compose.yml заменить все вхождения:
+Burada "app" proje/servis ismi olup örnek olarak user_postgis, user_api gibi değiştirilmelidir.
 
-- app_postgis
-- app_api
-- app_redis
-- app_bg_tasks
+### Başlatma
+1. Proje kökünde bir .env dosyası oluşturun, ortam değişkenlerine aşağıda "Ortam Değişkenleri" bölümünde örnekler verilmiştir.
+2. Projeyi başlatmak için - ```make up```
 
-app - название проекта/сервиса, например user_postgis, user_api и т.д
+### Migrasyonlar
+1. Migrasyon oluşturmak için (proje make up ile çalışır durumda olmalı) - ```MIGR_NAME=examplename make migration``` burada ```MIGR_NAME``` migrasyon adıdır (Opsiyonel parametre).
+2. Migrasyonları uygulamak için (proje make up ile çalışır durumda olmalı) - ```make migrate```
 
+### Testler
+Testleri çalıştırmak için (proje make up ile çalışır durumda olmalı) - ```make tests```
 
-### Запуск
-1. Создать в корне проекта файл - .env, пример переменных среды в разделе ниже "Переменные среды окружения"
-2. Запустить проект - ```make up```
-
-### Миграции
-1. Создать миграцию (проект должен быть запущен make up) - ```MIGR_NAME=examplename make migration```. Где ```MIGR_NAME``` название миграции (Необязательный параметр)
-2. Применить миграции (проект должен быть запущен make up) - ```make migrate```
-
-### Тесты
-Запуск тестов (проект должен быть запущен make up) - ```make tests```
-
-### URL: 
+### URL'ler:
 
 - DOCS Swagger - ```http://127.0.0.1:8002/docs```
-- SAQ task monitoring - ```http://127.0.0.1:8002/saq_monitor```
+- SAQ görev izleme - ```http://127.0.0.1:8002/saq_monitor```
 
-### Все команды Make:
-- ```make up``` - Запуск проекта
-- ```make down``` - Остановка проекта
-- ```make migration``` - Создание миграции
-- ```make migrate``` - Применение миграции
-- ```make check``` - Проверка кода lint + tests
-- ```make logs | C_NAME=examplename make logs``` - Вывод логов. C_NAME - название контейнера
-- ```make bash | C_NAME=examplename make bash``` - Вход в консоль контейнера. C_NAME - название контейнера
-- ```make tests``` - Запуск тестов
+### Tüm Make Komutları:
+- ```make up``` - Projeyi başlatır
+- ```make down``` - Projeyi durdurur
+- ```make migration``` - Migrasyon oluşturur
+- ```make migrate``` - Migrasyonları uygular
+- ```make check``` - Kodu lint + testlerle kontrol eder
+- ```make logs | C_NAME=examplename make logs``` - Logları gösterir. C_NAME - konteyner adı
+- ```make bash | C_NAME=examplename make bash``` - Konteyner konsoluna girer. C_NAME - konteyner adı
+- ```make tests``` - Testleri çalıştırır
 
+## Ortam Değişkenleri
 
-</details>
+### POSTGRES Veritabanı
+| Değişken          | Tür  | Açıklama                                                                             | Örnek                          |
+|------------------|------|--------------------------------------------------------------------------------------|-------------------------------|
+| POSTGRES_USER    | str  | PostgreSQL kullanıcısı                                                               | postgres                      |
+| POSTGRES_PASSWORD| str  | Veritabanı şifresi                                                                   | postgres                      |
+| POSTGRES_DB      | str  | Veritabanı adı                                                                       | user_example                  |
+| POSTGRES_HOST    | str  | host/konteyner adı                                                                   | user_postgis                  |
+| POSTGRES_PORT    | int  | port, varsayılan 5432                                                                | 5432                          |
+| POSTGRES_ECHO    | bool | Tüm sorguların loglanması için bayrak, yalnızca yerel makinelerde geliştirme sırasında kullanılır | True veya False               |
+| POSTGRES_MAX_OVERFLOW| int  | Havuzun maksimum büyüklüğü                                                           | 20                            |
+| POSTGRES_POOL_SIZE  | int  | Desteklenen havuz büyüklüğü                                                          | 10                            |
 
-<details>
+### CORS
+| Değişken      | Tür  | Açıklama                                                         | Örnek                                      |
+|---------------|------|------------------------------------------------------------------|-------------------------------------------|
+| CORS_ORIGINS  | list | Kaynak listesi (istemci adresleri), kaynaklara erişim izni için. "*" sembolü varsa veya belirtilmemişse tüm kaynaklara erişim izinlidir | ["127.0.0.1", "testdomain.com"] veya ["*"]|
 
-<summary>Переменные среды окружения</summary>
+### SENTRY Hata İzleme
+| Değişken            | Tür | Açıklama                            | Örnek                                                           |
+|---------------------|-----|-------------------------------------|-----------------------------------------------------------------|
+| SENTRY_DSN          | str | Sentry proje ayarlarından alınan DSN. Hataları izlememek için bu değişken projeye geçirilmeyebilir | ```https://exampledsn.sentry.io/1234567```                      |
+| SENTRY_ENVIRONMENT  | str | Proje ortamı                        | dev, test, prod                                                 |
 
-#### База данных POSTGRES
-| Переменная        | Тип  | Описание                                                                                   | Пример                     |
-|-------------------|------|--------------------------------------------------------------------------------------------|----------------------------|
-| POSTGRES_USER     | str  | Пользователь postgres                                                                      | postgres                   |
-| POSTGRES_PASSWORD | str  | Пароль к базе данных                                                                       | postgres                   |
-| POSTGRES_DB       | str  | Название базы данных                                                                       | app_example                |
-| POSTGRES_HOST     | str  | host/название контейнера                                                                   | app_postgis                |
-| POSTGRES_PORT     | int  | port, по умолчанию 5432                                                                    | 5432                       |
-| POSTGRES_ECHO   | bool | Флаг для логирования всех запросов, ```true``` используется только на локальных машиных при разработке | ```True``` или ```False``` |
-| POSTGRES_MAX_OVERFLOW   | int  | Максимальный размер переполнения пула                                                      | 20                         |
-| POSTGRES_POOL_SIZE   | int  | Размер поддерживаемого пула                                                                | 10                         |
-
-
-#### CORS
-| Переменная | Тип  | Описание                                                                                                                                                                                                     | Пример                                  |
-|--|------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------|
-| CORS_ORIGINS | list | Список источников(адреса клиентов), для предоставлении доступа к ресурсам. Если не указать данную переменную, или если в списке будет присутствовать символ "*" - то доступ к ресурсам будет предоставлен всем | ["127.0.0.1", "testdomen.ru"] или ["*"] |
-
-
-#### Мониторинг ошибок SENTRY
-| Переменная | Тип | Описание                                                                                                          | Пример                                                                                             |
-|--|-----|-------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
-| SENTRY_DSN | str | DSN полученный в настройках проекта sentry. Чтобы не отслеживать ошибки, можно не передавать переменную в проект. | ```https://099711de3c48ebe26c7f1bde234ca1f7@o4506138282491904.ingest.sentry.io/4412138283737088``` |
-| SENTRY_ENVIRONMENT | str | Окружение проекта                                                                                                 | dev, test, prod и т.д    
-
-
-#### Redis
-| Переменная | Тип | Описание                      | Пример                                 |
-|------------|-----|-------------------------------|----------------------------------------|
-| REDIS_DSN  | str | Адрес для подключения к redis | redis://app_redis or redis://localhost |
-
-</details>
+### Redis
+| Değişken   | Tür | Açıklama               | Örnek                            |
+|------------|-----|------------------------|-----------------------------------|
+| REDIS_DSN  | str | Redis'e bağlantı adresi| redis://user_redis veya redis://localhost |

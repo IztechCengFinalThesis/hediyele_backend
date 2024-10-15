@@ -1,12 +1,14 @@
+version: '3.8'  # Docker Compose versiyonu
+
 services:
   app_postgis:
     image: postgis/postgis:latest
     container_name: app_postgis
     env_file: ./.env
     volumes:
-      - app_postgis:/var/lib/postgresql/data
+      - app_postgis:/var/lib/postgresql/data  # Veritabanı verilerini volume'e kaydediyor
     ports:
-      - 5433:5432
+      - "5433:5432"  # Host:container port eşlemesi
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -14,28 +16,29 @@ services:
 
   app_api:
     container_name: app_api
-    build: ./app
+    build: ./app 
     env_file: ./.env
     volumes:
-      - ./app/:/usr/src/app/
+      - ./app:/usr/src/app/ 
     ports:
-      - 8002:8000
+      - "8002:8000"  
     depends_on:
-      - app_postgis
+      - app_postgis 
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload 
 
   app_redis:
     container_name: app_redis
-    image: redis
+    image: redis:latest  
     ports:
-      - 6379:6379
+      - "6379:6379" 
 
   app_bg_tasks:
     container_name: app_bg_tasks
-    build: ./app
+    build: ./app 
     depends_on:
       - app_postgis
     env_file: .env
-    command: saq saq_tasks.main.settings --web
+    command: saq saq_tasks.main.settings --web 
 
 volumes:
-  app_postgis:
+  app_postgis: 

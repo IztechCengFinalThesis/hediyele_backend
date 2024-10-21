@@ -15,3 +15,6 @@ Testleri çalıştırmak için (proje make up ile çalışır durumda olmalı) -
 
 - DOCS Swagger - ```http://127.0.0.1:8002/docs```
 - SAQ görev izleme - ```http://127.0.0.1:8002/saq_monitor```
+
+### Otamatik Model olusturma
+ - sqlacodegen postgresql://avnadmin:AVNS_uB3eS5nBg9hbv93vLAa@hediyele-hediyele.h.aivencloud.com:23984/defaultdb --outfile models.py

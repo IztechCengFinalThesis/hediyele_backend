@@ -1,16 +1,21 @@
-from sqlalchemy import create_engine # type: ignore
-from sqlalchemy.ext.declarative import declarative_base # type: ignore
-from sqlalchemy.orm import sessionmaker # type: ignore
+import psycopg2
+from dotenv import load_dotenv
+import os
 
-DATABASE_URL = "postgresql://avnadmin:AVNS_uB3eS5nBg9hbv93vLAa@hediyele-hediyele.h.aivencloud.com:23984/defaultdb"
+load_dotenv()
 
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
-def get_db():
-    db = SessionLocal()
+def get_db_connection():
     try:
-        yield db
-    finally:
-        db.close()
+        conn = psycopg2.connect(
+            host=os.getenv("DB_HOST"),
+            database=os.getenv("DB_NAME"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_PASSWORD"),
+            port=os.getenv("DB_PORT"),
+            options="-c client_encoding=UTF8"
+        )
+        print("✅ Database connection successful")  # Başarı mesajı
+        return conn
+    except Exception as e:
+        print(" Database connection failed:", str(e))  # Hata mesajını yazdır
+        raise

@@ -1,48 +1,65 @@
-from pydantic import BaseModel, Field
-from typing import List, Optional
+from pydantic import BaseModel, model_validator, ValidationError, ConfigDict
 
-# Book Schema
-class BookBase(BaseModel):
-    title: str = Field(..., max_length=255, description="Title of the book")
-    author: str = Field(..., max_length=255, description="Author of the book")
-    publisher: str = Field(..., max_length=255, description="Publisher of the book")
-    price: float = Field(..., gt=0, description="Price of the book, must be a positive value")
-    currency: str = Field(..., max_length=10, description="Currency of the price, e.g., USD, EUR")
-    description: Optional[str] = Field(None, description="Optional description of the book")
-    url: Optional[str] = Field(None, max_length=255, description="Optional URL for more information about the book")
+class ProductFilterSchema(BaseModel):
+    # 🎯 Define Allowed Fields
+    age_0_2: bool = False
+    age_3_5: bool = False
+    age_6_12: bool = False
+    age_13_18: bool = False
+    age_19_29: bool = False
+    age_30_45: bool = False
+    age_45_65: bool = False
+    age_65_plus: bool = False
 
-class BookCreate(BookBase):
-    pass
+    gender_male: bool = False
+    gender_female: bool = False
 
-class Book(BookBase):
-    id: int = Field(..., description="Unique identifier for the book")
+    special_birthday: bool = False
+    special_anniversary: bool = False
+    special_valentines: bool = False
+    special_new_year: bool = False
+    special_house_warming: bool = False
+    special_mothers_day: bool = False
+    special_fathers_day: bool = False
 
-    class Config:
-        orm_mode = True
+    interest_sports: bool = False
+    interest_music: bool = False
+    interest_books: bool = False
+    interest_technology: bool = False
+    interest_travel: bool = False
+    interest_art: bool = False
+    interest_food: bool = False
+    interest_fitness: bool = False
+    interest_health: bool = False
+    interest_photography: bool = False
+    interest_fashion: bool = False
+    interest_pets: bool = False
+    interest_home_decor: bool = False
+    interest_movies_tv: bool = False
+    model_config = ConfigDict(extra="forbid")
 
-# Category Schema
-class CategoryBase(BaseModel):
-    category_name: str = Field(..., description="Name of the category")
+    @model_validator(mode="after")
+    def check_exclusive_fields(self):
 
-class CategoryCreate(CategoryBase):
-    pass
+        age_fields = [
+            self.age_0_2, self.age_3_5, self.age_6_12, self.age_13_18,
+            self.age_19_29, self.age_30_45, self.age_45_65, self.age_65_plus
+        ]
+        if sum(age_fields) > 1:
+            raise ValueError("Only one age group can be selected.")
 
-class Category(CategoryBase):
-    id: int = Field(..., description="Unique identifier for the category")
 
-    class Config:
-        orm_mode = True
+        gender_fields = [self.gender_male, self.gender_female]
+        if sum(gender_fields) > 1:
+            raise ValueError("Only one gender can be selected.")
 
-# CategoriesVectorized Schema
-class CategoriesVectorizedBase(BaseModel):
-    category_id: int = Field(..., description="ID of the category this vector belongs to")
-    vector: List[float] = Field(..., description="A vector representation of the category")
 
-class CategoriesVectorizedCreate(CategoriesVectorizedBase):
-    pass
+        special_fields = [
+            self.special_birthday, self.special_anniversary, self.special_valentines,
+            self.special_new_year, self.special_house_warming, self.special_mothers_day,
+            self.special_fathers_day
+        ]
+        if sum(special_fields) > 1:
+            raise ValueError("Only one special day can be selected.")
 
-class CategoriesVectorized(CategoriesVectorizedBase):
-    id: int = Field(..., description="Unique identifier for the vectorized category")
-
-    class Config:
-        orm_mode = True
+        return self

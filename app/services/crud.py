@@ -1,4 +1,4 @@
-from database import get_db_connection
+from app.db.database import get_db_connection
 from fastapi import HTTPException
 from typing import Dict
 
@@ -24,7 +24,7 @@ def query_products(filters: Dict[str, bool]):
             LIMIT 10
         ) AS pf ON p.id = pf.id;
     """ 
-    print(query)
+
     try:
         cur.execute(query)
         products = cur.fetchall()

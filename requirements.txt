@@ -1,8 +1,5 @@
 fastapi
-sqlalchemy
-psycopg2-binary
-pydantic
 uvicorn
-pandas
-python-jose[cryptography]
-alembic
+psycopg2
+python-dotenv
+openai 

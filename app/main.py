@@ -1,9 +1,8 @@
 from fastapi import FastAPI
-from routes import router
+from app.api.routes import router
 
 app = FastAPI(title="Hediyele Backend API")
 
-# Rotaları ekle
 app.include_router(router)
 
 if __name__ == "__main__":

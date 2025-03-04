@@ -1,7 +1,6 @@
 from pydantic import BaseModel, model_validator, ValidationError, ConfigDict
 
 class ProductFilterSchema(BaseModel):
-    # 🎯 Define Allowed Fields
     age_0_2: bool = False
     age_3_5: bool = False
     age_6_12: bool = False
@@ -40,7 +39,6 @@ class ProductFilterSchema(BaseModel):
 
     @model_validator(mode="after")
     def check_exclusive_fields(self):
-
         age_fields = [
             self.age_0_2, self.age_3_5, self.age_6_12, self.age_13_18,
             self.age_19_29, self.age_30_45, self.age_45_65, self.age_65_plus
@@ -48,11 +46,9 @@ class ProductFilterSchema(BaseModel):
         if sum(age_fields) > 1:
             raise ValueError("Only one age group can be selected.")
 
-
         gender_fields = [self.gender_male, self.gender_female]
         if sum(gender_fields) > 1:
             raise ValueError("Only one gender can be selected.")
-
 
         special_fields = [
             self.special_birthday, self.special_anniversary, self.special_valentines,

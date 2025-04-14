@@ -3,35 +3,71 @@ from fastapi import HTTPException
 from typing import Dict
 
 def query_products(filters: Dict[str, bool]):
-
     conn = get_db_connection()
     cur = conn.cursor()
 
-    active_filters = [key for key, value in filters.items() if value]
+    # Ağırlıklar (Algoritma 3)
+    weights = {
+        "age_0_2": 2.0,
+        "age_3_5": 2.0,
+        "age_6_12": 2.0,
+        "age_13_18": 2.0,
+        "age_19_29": 2.0,
+        "age_30_45": 2.0,
+        "age_45_65": 2.0,
+        "age_65_plus": 2.0,
+        "gender_male": 4.0,
+        "gender_female": 4.0,
+        "special_birthday": 1.0,
+        "special_anniversary": 1.0,
+        "special_valentines": 1.0,
+        "special_new_year": 1.0,
+        "special_house_warming": 1.0,
+        "special_mothers_day": 1.0,
+        "special_fathers_day": 1.0,
+        "interest_sports": 1.2,
+        "interest_music": 1.0,
+        "interest_books": 1.0,
+        "interest_technology": 1.0,
+        "interest_travel": 1.0,
+        "interest_art": 1.0,
+        "interest_food": 1.0,
+        "interest_fitness": 1.0,
+        "interest_health": 1.0,
+        "interest_photography": 1.0,
+        "interest_fashion": 1.0,
+        "interest_pets": 1.0,
+        "interest_home_decor": 1.0,
+        "interest_movies_tv": 1.0
+    }
 
-    if not active_filters:
+    offset = 0.1
+    expression_parts = []
+
+    for key, value in filters.items():
+        if value:
+            weight = weights.get(key, 1.0)
+            expression_parts.append(f"({weight} * (COALESCE({key}, 0) + {offset}))")
+
+    if not expression_parts:
         return {"message": "No filters selected", "products": []}
 
-    filter_expression = " * ".join(active_filters)
+    sum_expr = " + ".join(expression_parts)
 
     query = f"""
-        SELECT p.product_name, pf.product_score
+        SELECT p.product_name, ({sum_expr}) AS score
         FROM product p
-        JOIN (
-            SELECT id, ({filter_expression}) AS product_score
-            FROM product_features
-            ORDER BY product_score DESC
-            LIMIT 10
-        ) AS pf ON p.id = pf.id;
-    """ 
+        JOIN product_features pf ON p.product_features_id = pf.id
+        ORDER BY score DESC
+        LIMIT 10
+    """
 
     try:
         cur.execute(query)
         products = cur.fetchall()
+        return {"products": products}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         cur.close()
         conn.close()
-
-    return {"products": products}

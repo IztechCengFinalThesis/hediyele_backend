@@ -1,4 +1,6 @@
 from pydantic import BaseModel, model_validator, ValidationError, ConfigDict
+from typing import List
+
 
 class ProductFilterSchema(BaseModel):
     age_0_2: bool = False
@@ -35,27 +37,66 @@ class ProductFilterSchema(BaseModel):
     interest_pets: bool = False
     interest_home_decor: bool = False
     interest_movies_tv: bool = False
+
     model_config = ConfigDict(extra="forbid")
 
-    @model_validator(mode="after")
-    def check_exclusive_fields(self):
-        age_fields = [
+    @property
+    def has_age(self):
+        return any([
             self.age_0_2, self.age_3_5, self.age_6_12, self.age_13_18,
             self.age_19_29, self.age_30_45, self.age_45_65, self.age_65_plus
-        ]
-        if sum(age_fields) > 1:
-            raise ValueError("Only one age group can be selected.")
+        ])
 
-        gender_fields = [self.gender_male, self.gender_female]
-        if sum(gender_fields) > 1:
-            raise ValueError("Only one gender can be selected.")
+    @property
+    def has_gender(self):
+        return self.gender_male or self.gender_female
 
-        special_fields = [
+    @property
+    def has_special(self):
+        return any([
             self.special_birthday, self.special_anniversary, self.special_valentines,
             self.special_new_year, self.special_house_warming, self.special_mothers_day,
             self.special_fathers_day
-        ]
-        if sum(special_fields) > 1:
+        ])
+
+    @property
+    def has_interests(self):
+        return any([
+            self.interest_sports, self.interest_music, self.interest_books,
+            self.interest_technology, self.interest_travel, self.interest_art,
+            self.interest_food, self.interest_fitness, self.interest_health,
+            self.interest_photography, self.interest_fashion, self.interest_pets,
+            self.interest_home_decor, self.interest_movies_tv
+        ])
+
+    def get_missing_fields(self) -> List[str]:
+        missing = []
+        if not self.has_age:
+            missing.append("Yaş aralığını belirtir misiniz?")
+        if not self.has_gender:
+            missing.append("Hediye alacağınız kişinin cinsiyeti nedir?")
+        if not self.has_special:
+            missing.append("Bu hediye özel bir gün için mi? (Doğum günü, yıl dönümü vb.)")
+        if not self.has_interests:
+            missing.append("Kişinin ilgi alanlarından birkaçını paylaşır mısınız? (Örneğin, spor, müzik, teknoloji vb.)")
+        return missing
+
+    @model_validator(mode="after")
+    def check_exclusive_fields(self):
+        if sum([
+            self.age_0_2, self.age_3_5, self.age_6_12, self.age_13_18,
+            self.age_19_29, self.age_30_45, self.age_45_65, self.age_65_plus
+        ]) > 1:
+            raise ValueError("Only one age group can be selected.")
+
+        if self.gender_male and self.gender_female:
+            raise ValueError("Only one gender can be selected.")
+
+        if sum([
+            self.special_birthday, self.special_anniversary, self.special_valentines,
+            self.special_new_year, self.special_house_warming, self.special_mothers_day,
+            self.special_fathers_day
+        ]) > 1:
             raise ValueError("Only one special day can be selected.")
 
         return self

@@ -1,6 +1,29 @@
-from pydantic import BaseModel, model_validator, ValidationError, ConfigDict
-from typing import List
+from pydantic import BaseModel, model_validator, ConfigDict, Field
+from typing import List,Optional
 
+class FeatureInput(BaseModel):
+    gender: Optional[str]
+    age: Optional[str]
+    special: Optional[str]
+    interests: List[str] = []
+    min_budget: Optional[float] = Field(default=None, ge=0)
+    max_budget: Optional[float] = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def check_required_fields(self) -> "FeatureInput":
+        if not self.gender or not self.age or not self.special:
+            raise ValueError("Cinsiyet, yaş ve özel gün alanları zorunludur.")
+        return self
+
+class ProductRecommendation(BaseModel):
+    algorithm: str
+    product_id: int
+    recommended_order: int
+    is_selected: bool
+
+class BlindTestSubmission(BaseModel):
+    session_parameters: FeatureInput
+    selections: List[ProductRecommendation]
 
 class ProductFilterSchema(BaseModel):
     age_0_2: bool = False
@@ -37,6 +60,9 @@ class ProductFilterSchema(BaseModel):
     interest_pets: bool = False
     interest_home_decor: bool = False
     interest_movies_tv: bool = False
+
+    min_budget: Optional[float] = Field(default=None, ge=0)
+    max_budget: Optional[float] = Field(default=None, ge=0)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -79,6 +105,9 @@ class ProductFilterSchema(BaseModel):
             missing.append("Bu hediye özel bir gün için mi? (Doğum günü, yıl dönümü vb.)")
         if not self.has_interests:
             missing.append("Kişinin ilgi alanlarından birkaçını paylaşır mısınız? (Örneğin, spor, müzik, teknoloji vb.)")
+        if self.min_budget is not None and self.max_budget is not None:
+            if self.min_budget > self.max_budget:
+                raise ValueError("Minimum bütçe, maksimum bütçeden büyük olamaz.")
         return missing
 
     @model_validator(mode="after")

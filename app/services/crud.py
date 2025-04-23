@@ -6,7 +6,6 @@ def query_products(filters: Dict[str, bool]):
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Ağırlıklar (Algoritma 3)
     weights = {
         "age_0_2": 2.0,
         "age_3_5": 2.0,
@@ -25,7 +24,7 @@ def query_products(filters: Dict[str, bool]):
         "special_house_warming": 1.0,
         "special_mothers_day": 1.0,
         "special_fathers_day": 1.0,
-        "interest_sports": 1.2,
+        "interest_sports": 1.0,
         "interest_music": 1.0,
         "interest_books": 1.0,
         "interest_technology": 1.0,
@@ -40,12 +39,11 @@ def query_products(filters: Dict[str, bool]):
         "interest_home_decor": 1.0,
         "interest_movies_tv": 1.0
     }
-
     offset = 0.1
     expression_parts = []
 
     for key, value in filters.items():
-        if value:
+        if key in weights and value:
             weight = weights.get(key, 1.0)
             expression_parts.append(f"({weight} * (COALESCE({key}, 0) + {offset}))")
 
@@ -54,10 +52,18 @@ def query_products(filters: Dict[str, bool]):
 
     sum_expr = " + ".join(expression_parts)
 
+    # 🔥 Fiyat filtresi SQL’e eklendi
+    price_clause = ""
+    if "min_budget" in filters and filters["min_budget"] is not None:
+        price_clause += f" AND p.price >= {filters['min_budget']}"
+    if "max_budget" in filters and filters["max_budget"] is not None:
+        price_clause += f" AND p.price <= {filters['max_budget']}"
+
     query = f"""
-        SELECT p.product_name, ({sum_expr}) AS score
+        SELECT p.product_name, p.price, ({sum_expr}) AS score
         FROM product p
         JOIN product_features pf ON p.product_features_id = pf.id
+        WHERE 1=1 {price_clause}
         ORDER BY score DESC
         LIMIT 10
     """
@@ -65,7 +71,11 @@ def query_products(filters: Dict[str, bool]):
     try:
         cur.execute(query)
         products = cur.fetchall()
-        return {"products": products}
+        return {
+            "products": [
+                {"name": row[0], "price": row[1], "score": row[2]} for row in products
+            ]
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:

@@ -7,8 +7,10 @@ import openai
 import os
 import json
 import re
+from app.services import blind_test
 
 router = APIRouter()
+router.include_router(blind_test.router, prefix="/blind-test")
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
@@ -34,14 +36,14 @@ async def check_db_connection():
 
 
 @router.post("/recommendations/basic/")
-async def get_basic_recommendations(raw_filters: dict = Body(...)):
+async def get_basic_recommendations(
+    raw_filters: ProductFilterSchema = Body(...)
+):
     try:
-        validated_filters = ProductFilterSchema(**raw_filters)
-        product_recommendations = query_products(validated_filters.model_dump())
-
+        product_recommendations = query_products(raw_filters.model_dump())
         return {
             "message": "Öneriler hazır!",
-            "filters_used": validated_filters.model_dump(),
+            "filters_used": raw_filters.model_dump(),
             "recommendations": product_recommendations
         }
 
@@ -64,6 +66,9 @@ async def get_premium_recommendations(user_input: str, previous_filled_data: dic
         Bu tabloyu kullanıcı bilgisine göre **güncelle** ve sadece eksik bilgileri tamamla.
         Daha önce doldurulmuş bilgileri değiştirme.
         Boolean değişkenleri True veya False olarak döndür. Null kullanma.
+
+        Ayrıca `min_budget` ve `max_budget` alanlarını da kullanıcı girişinden tahmin etmeye çalış.
+        Bu alanlar float sayı olmalı (örn. 250.0 veya 999.99 gibi).
         JSON formatında sadece güncellenmiş tabloyu döndür.
         """
 

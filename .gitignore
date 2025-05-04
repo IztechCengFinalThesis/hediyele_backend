@@ -14,3 +14,4 @@ media/*
 *.pytest_cache
 *.coverage
 *.mypy_cache
+firebase_admin.json

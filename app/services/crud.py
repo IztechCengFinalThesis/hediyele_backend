@@ -52,7 +52,7 @@ def query_products(filters: Dict[str, bool]):
 
     sum_expr = " + ".join(expression_parts)
 
-    # 🔥 Fiyat filtresi SQL’e eklendi
+    # �� Fiyat filtresi SQL'e eklendi
     price_clause = ""
     if "min_budget" in filters and filters["min_budget"] is not None:
         price_clause += f" AND p.price >= {filters['min_budget']}"
@@ -60,7 +60,7 @@ def query_products(filters: Dict[str, bool]):
         price_clause += f" AND p.price <= {filters['max_budget']}"
 
     query = f"""
-        SELECT p.product_name, p.price, ({sum_expr}) AS score
+        SELECT p.id, p.product_name, p.price, p.site, p.link, ({sum_expr}) AS score
         FROM product p
         JOIN product_features pf ON p.product_features_id = pf.id
         WHERE 1=1 {price_clause}
@@ -73,7 +73,14 @@ def query_products(filters: Dict[str, bool]):
         products = cur.fetchall()
         return {
             "products": [
-                {"name": row[0], "price": row[1], "score": row[2]} for row in products
+                {
+                    "id": row[0],
+                    "name": row[1], 
+                    "price": float(row[2]) if row[2] is not None else 0.0, 
+                    "site": row[3] if row[3] is not None else "",
+                    "link": row[4] if row[4] is not None else "",
+                    "score": float(row[5]) if row[5] is not None else 0.0
+                } for row in products
             ]
         }
     except Exception as e:

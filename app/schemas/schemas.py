@@ -1,6 +1,10 @@
 from pydantic import BaseModel, model_validator, ConfigDict, Field
 from typing import List,Optional
 
+class LoginCredentials(BaseModel):
+    email: str
+    password: str
+
 class FeatureInput(BaseModel):
     gender: Optional[str]
     age: Optional[str]

@@ -24,7 +24,7 @@ pip install -r requirements.txt
 1. [Firebase Console](https://console.firebase.google.com/)'dan bir proje oluşturun
 2. Authentication > Sign-in method > Email/Password metodunu etkinleştirin
 3. Project Settings > Service accounts > Generate new private key
-4. İndirilen JSON dosyasını "Firebase Admin SDK Config (1).json" olarak projenin kök dizinine ekleyin
+4. İndirilen JSON dosyasını "firebase_admin.json" olarak projenin kök dizinine ekleyin
 
 ### .env Dosyası
 

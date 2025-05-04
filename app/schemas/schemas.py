@@ -24,6 +24,7 @@ class ProductRecommendation(BaseModel):
     product_id: int
     recommended_order: int
     is_selected: bool
+    bad_recommendation: bool = False
 
 class BlindTestSubmission(BaseModel):
     session_parameters: FeatureInput

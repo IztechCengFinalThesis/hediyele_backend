@@ -145,10 +145,10 @@ def submit_blind_test(data: BlindTestSubmission):
                 """
                 INSERT INTO blind_test_recommendations (
                     blind_test_session_id, algorithm_name, recommended_product_id,
-                    is_selected, recommended_order
-                ) VALUES (%s, %s, %s, %s, %s)
+                    is_selected, recommended_order, bad_recommendation
+                ) VALUES (%s, %s, %s, %s, %s, %s)
                 """,
-                (session_id, s.algorithm, s.product_id, s.is_selected, s.recommended_order)
+                (session_id, s.algorithm, s.product_id, s.is_selected, s.recommended_order, s.bad_recommendation)
             )
 
         conn.commit()
@@ -158,3 +158,29 @@ def submit_blind_test(data: BlindTestSubmission):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         conn.close()
+
+@router.get("/previous-sessions")
+def get_previous_sessions():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT id, parameters, created_at 
+            FROM blind_test_session 
+            ORDER BY created_at DESC 
+            LIMIT 10
+        """)
+        rows = cur.fetchall()
+        return [
+            {
+                "session_id": row[0],
+                "parameters": row[1],
+                "created_at": row[2].isoformat()
+            }
+            for row in rows
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        conn.close() 

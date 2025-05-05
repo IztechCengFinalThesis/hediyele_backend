@@ -38,71 +38,70 @@ def run_algorithm(
 ) -> List[dict]:
     cur = conn.cursor()
 
-    # 1. Skor hesaplama algoritmaları
+    NORMALIZE = 10.0
+    EPS       = 1e-6
+
+    W = {
+        **{k: 2.0 for k in mapped_features if k.startswith("age")},
+        **{k: 4.0 for k in mapped_features if k.startswith("gender")},
+        **{k: 1.0 for k in mapped_features if k.startswith("special")},
+        **{k: 1.0 for k in mapped_features if k.startswith("interest")},
+    }
+
+    selected_cols = [k for k, v in mapped_features.items() if v > 0]
+    if not selected_cols:
+        return []                    
+
     if algo == "algo1":
-        expression_parts = [
-            f"(COALESCE({k}, 0) + 0.1)"
-            for k, v in mapped_features.items() if v > 0
+        parts = [
+            f"({W[c]} * (COALESCE({c},0)/{NORMALIZE}))"
+            for c in selected_cols
         ]
-        score_expr = " * ".join(expression_parts)
+        score_expr = " + ".join(parts)
 
     elif algo == "algo2":
-        weights = {
-            k: (
-                1.0 if "interest" in k else
-                1.0 if "special" in k else
-                4.0 if "gender" in k else
-                2.0
-            )
-            for k in mapped_features.keys()
-        }
-        expression_parts = [
-            f"({weights[k]} * (COALESCE({k}, 0) + 0.1))"
-            for k, v in mapped_features.items() if v > 0
+        dot_parts  = [f"(COALESCE({c},0)/{NORMALIZE})" for c in selected_cols]
+        dot_expr   = " + ".join(dot_parts)
+
+        user_norm  = len(selected_cols) ** 0.5
+        prod_sq    = " + ".join([f"POWER(COALESCE({c},0)/{NORMALIZE},2)"
+                                 for c in selected_cols])
+        prod_norm  = f"SQRT({prod_sq} + {EPS})"
+
+        score_expr = f"(({dot_expr}) / ({user_norm} * {prod_norm}))"
+
+    else:
+        diff_parts = [
+            f"{W[c]} * POWER((COALESCE({c},0)/{NORMALIZE}) - 1, 2)"
+            for c in selected_cols
         ]
-        score_expr = " + ".join(expression_parts)
+        diff_sum   = " + ".join(diff_parts)
+        score_expr = f"(1 / (1 + SQRT({diff_sum})))"
 
-    else:  # algo3
-        expression_parts = []
-        for k, v in mapped_features.items():
-            if v > 0:
-                if "gender" in k:
-                    expression_parts.append(f"(2.0 * (COALESCE({k}, 0) + 0.1))")
-                elif "interest" in k:
-                    expression_parts.append(f"(0.5 * (COALESCE({k}, 0) + 0.1))")
-                else:
-                    expression_parts.append(f"(COALESCE({k}, 0) + 0.1)")
-        score_expr = " + ".join(expression_parts)
-
-    if not expression_parts:
-        return []
-
-    # 2. Fiyat filtresi
     price_clause = ""
     if min_budget is not None:
         price_clause += f" AND p.price >= {min_budget}"
     if max_budget is not None:
         price_clause += f" AND p.price <= {max_budget}"
 
-    # 3. Hariç tutulan ürünler
     exclude_clause = ""
     if exclude_ids:
-        exclude_ids_str = ", ".join(str(i) for i in exclude_ids)
-        exclude_clause = f" AND p.id NOT IN ({exclude_ids_str})"
+        exclude_clause = f" AND p.id NOT IN ({', '.join(str(i) for i in exclude_ids)})"
 
-    # 4. SQL Sorgusu
     query = f"""
-        SELECT p.id, p.product_name, p.price, ({score_expr}) AS score
+        SELECT p.id,
+               p.product_name,
+               p.price,
+               ({score_expr}) AS score
         FROM product p
         JOIN product_features pf ON p.product_features_id = pf.id
-        WHERE 1=1 {exclude_clause} {price_clause}
+        WHERE 1=1 {price_clause} {exclude_clause}
         ORDER BY score DESC
         LIMIT 5
     """
 
     try:
         cur.execute(query)
-        rows = cur.fetchall()
         return [
             {
                 "product_id": r[0],
@@ -110,7 +109,7 @@ def run_algorithm(
                 "price": float(r[2]),
                 "score": float(r[3]),
             }
-            for r in rows
+            for r in cur.fetchall()
         ]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

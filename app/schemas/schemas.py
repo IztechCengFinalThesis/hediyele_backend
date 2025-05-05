@@ -27,6 +27,7 @@ class ProductRecommendation(BaseModel):
     bad_recommendation: bool = False
 
 class BlindTestSubmission(BaseModel):
+    email: str
     session_parameters: FeatureInput
     selections: List[ProductRecommendation]
 

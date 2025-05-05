@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from app.schemas.schemas import FeatureInput, BlindTestSubmission
 from app.db.database import get_db_connection
 
@@ -135,8 +135,8 @@ def submit_blind_test(data: BlindTestSubmission):
     cur = conn.cursor()
     try:
         cur.execute(
-            "INSERT INTO blind_test_session (parameters) VALUES (%s) RETURNING id",
-            (data.session_parameters.json(),)
+            "INSERT INTO blind_test_session (parameters, mail) VALUES (%s, %s) RETURNING id",
+            (data.session_parameters.json(), data.email)
         )
         session_id = cur.fetchone()[0]
 
@@ -157,25 +157,34 @@ def submit_blind_test(data: BlindTestSubmission):
         conn.rollback()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
+        cur.close()
         conn.close()
 
 @router.get("/previous-sessions")
-def get_previous_sessions():
+def get_previous_sessions(email: Optional[str] = Query(None)):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("""
-            SELECT id, parameters, created_at 
+        query = """
+            SELECT id, parameters, created_at, mail 
             FROM blind_test_session 
-            ORDER BY created_at DESC 
-            LIMIT 10
-        """)
+        """
+        params = []
+        
+        if email:
+            query += " WHERE mail = %s"
+            params.append(email)
+            
+        query += " ORDER BY created_at DESC LIMIT 10"
+        
+        cur.execute(query, params if params else None)
         rows = cur.fetchall()
         return [
             {
                 "session_id": row[0],
                 "parameters": row[1],
-                "created_at": row[2].isoformat()
+                "created_at": row[2].isoformat(),
+                "email": row[3]
             }
             for row in rows
         ]
@@ -183,4 +192,4 @@ def get_previous_sessions():
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         cur.close()
-        conn.close() 
+        conn.close()

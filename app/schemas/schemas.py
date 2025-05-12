@@ -51,6 +51,7 @@ class ProductFilterSchema(BaseModel):
     special_house_warming: bool = False
     special_mothers_day: bool = False
     special_fathers_day: bool = False
+    special_other: bool = False
 
     interest_sports: bool = False
     interest_music: bool = False
@@ -88,7 +89,7 @@ class ProductFilterSchema(BaseModel):
         return any([
             self.special_birthday, self.special_anniversary, self.special_valentines,
             self.special_new_year, self.special_house_warming, self.special_mothers_day,
-            self.special_fathers_day
+            self.special_fathers_day, self.special_other
         ])
 
     @property
@@ -130,7 +131,7 @@ class ProductFilterSchema(BaseModel):
         if sum([
             self.special_birthday, self.special_anniversary, self.special_valentines,
             self.special_new_year, self.special_house_warming, self.special_mothers_day,
-            self.special_fathers_day
+            self.special_fathers_day, self.special_other
         ]) > 1:
             raise ValueError("Only one special day can be selected.")
 

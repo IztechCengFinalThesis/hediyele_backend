@@ -362,6 +362,54 @@ async def get_product_images(
         raise HTTPException(status_code=500, detail=f"Resim getirme hatası: {str(e)}")
 
 
+@router.get("/public/products/{product_id}/images")
+async def get_public_product_images(product_id: int, image_id: Optional[int] = None):
+    """
+    Ürün ID'sine göre resimleri getirir. Bu endpoint kimlik doğrulaması gerektirmez.
+    Eğer image_id belirtilirse sadece o resmi döndürür, aksi halde tüm resimlerin listesini döndürür.
+    """
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        if image_id is not None:
+            # Belirli bir resmi getir
+            cur.execute(
+                "SELECT image_data FROM product_images WHERE product_id = %s AND id = %s ORDER BY image_order",
+                (product_id, image_id)
+            )
+            result = cur.fetchone()
+            
+            if not result:
+                raise HTTPException(status_code=404, detail="Belirtilen resim bulunamadı")
+            
+            image_data = result[0]
+            cur.close()
+            conn.close()
+            
+            # Binary resim verisini doğrudan döndür
+            return Response(content=bytes(image_data), media_type="image/png")
+        else:
+            # Ürüne ait tüm resimlerin listesini getir
+            cur.execute(
+                "SELECT id, image_order FROM product_images WHERE product_id = %s ORDER BY image_order",
+                (product_id,)
+            )
+            results = cur.fetchall()
+            
+            if not results:
+                raise HTTPException(status_code=404, detail="Bu ürüne ait resim bulunamadı")
+            
+            image_list = [{"image_id": row[0], "order": row[1], "url": f"/api/public/products/{product_id}/images?image_id={row[0]}"} for row in results]
+            cur.close()
+            conn.close()
+            
+            return {"product_id": product_id, "images": image_list}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Resim getirme hatası: {str(e)}")
+
+
 @router.get("/products/{product_id}/thumbnail")
 async def get_product_thumbnail(
     product_id: int,
@@ -370,6 +418,38 @@ async def get_product_thumbnail(
     """
     Ürün ID'sine göre ilk resmi (thumbnail) döndürür.
     Bu endpoint için normal kullanıcı kimlik doğrulaması gereklidir.
+    """
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # İlk sıradaki resmi getir (image_order'a göre sıralı)
+        cur.execute(
+            "SELECT image_data FROM product_images WHERE product_id = %s ORDER BY image_order LIMIT 1",
+            (product_id,)
+        )
+        result = cur.fetchone()
+        
+        if not result:
+            # Eğer resim bulunamazsa default bir resim döndürülebilir
+            # Ya da 404 hatası verilebilir
+            raise HTTPException(status_code=404, detail="Bu ürüne ait resim bulunamadı")
+        
+        image_data = result[0]
+        cur.close()
+        conn.close()
+        
+        # Binary resim verisini doğrudan döndür
+        return Response(content=bytes(image_data), media_type="image/png")
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Thumbnail getirme hatası: {str(e)}")
+
+
+@router.get("/public/products/{product_id}/thumbnail")
+async def get_public_product_thumbnail(product_id: int):
+    """
+    Ürün ID'sine göre ilk resmi (thumbnail) döndürür. Bu endpoint kimlik doğrulaması gerektirmez.
     """
     try:
         conn = get_db_connection()

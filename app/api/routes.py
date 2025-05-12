@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Body, Depends, status
+from fastapi import APIRouter, HTTPException, Body, Depends, status, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import ValidationError, BaseModel
 from app.schemas.schemas import ProductFilterSchema, LoginCredentials
@@ -11,6 +11,7 @@ import json
 import re
 from app.services import blind_test
 from app.services.firebase import signin_with_email_password
+from typing import Optional, List
 
 router = APIRouter()
 router.include_router(blind_test.router, prefix="/blind-test")
@@ -186,9 +187,16 @@ async def get_premium_recommendations(
         Bu tabloyu kullanıcı bilgisine göre **güncelle** ve sadece eksik bilgileri tamamla.
         Daha önce doldurulmuş bilgileri değiştirme.
         Boolean değişkenleri True veya False olarak döndür. Null kullanma.
-
-        Ayrıca `min_budget` ve `max_budget` alanlarını da kullanıcı girişinden tahmin etmeye çalış.
-        Bu alanlar float sayı olmalı (örn. 250.0 veya 999.99 gibi).
+        
+        NOT: Kullanıcı bütçe konusunda konuştuğunda MUTLAKA şu şekilde davran:
+        1. Eğer kullanıcı net bir aralık belirttiyse (örn. "200-300 TL arası" gibi) min_budget ve max_budget'i o şekilde ayarla.
+        2. Eğer kullanıcı tek bir değer belirttiyse (örn. "500 TL civarı" gibi) bir aralık oluştur:
+           - min_budget = belirtilen değerin %20 altı
+           - max_budget = belirtilen değerin %20 üstü
+        3. Eğer kullanıcı "ucuz olsun" gibi belirsiz ifadeler kullandıysa, min_budget=0, max_budget=300 gibi belirleme yapabilirsin.
+        4. Eğer kullanıcı "pahalı olsun" veya "lüks" gibi ifadeler kullandıysa, min_budget=1000 gibi bir alt sınır belirleyebilirsin.
+        5. Kullanıcı bütçe konusunda hiçbir şey söylemediyse, min_budget ve max_budget'i null bırak.
+        
         JSON formatında sadece güncellenmiş tabloyu döndür.
         """
 
@@ -211,46 +219,180 @@ async def get_premium_recommendations(
             if key not in updated_data or updated_data[key] is None:
                 updated_data[key] = value
 
+        # Bütçe işleme mantığını kontrol et ve gerekirse düzelt
+        if "min_budget" in updated_data and "max_budget" in updated_data:
+            min_budget = updated_data.get("min_budget")
+            max_budget = updated_data.get("max_budget")
+            
+            # Hem min hem max aynı değere sahipse ve null değilse
+            if min_budget is not None and max_budget is not None and min_budget == max_budget:
+                # Aynı değeri merkez alarak aralık oluştur
+                budget_value = min_budget
+                updated_data["min_budget"] = round(budget_value * 0.8)  # %20 altı
+                updated_data["max_budget"] = round(budget_value * 1.2)  # %20 üstü
+
         filled_filters = ProductFilterSchema(**updated_data)
         missing_fields = filled_filters.get_missing_fields()
 
+        # Bütçe kontrolü
+        has_budget = False
+        if filled_filters.min_budget is not None or filled_filters.max_budget is not None:
+            has_budget = True
+
         if missing_fields:
             field_messages = {
-                "Yaş aralığını belirtir misiniz?": ("age", "Lütfen yaş aralığını belirtin."),
-                "Hediye alacağınız kişinin cinsiyeti nedir?": ("gender", "Lütfen cinsiyeti belirtin."),
-                "Bu hediye özel bir gün için mi? (Doğum günü, yıl dönümü vb.)": ("special", "Bu hediye özel bir gün için mi?"),
-                "Kişinin ilgi alanlarından birkaçını paylaşır mısınız? (Örneğin, spor, müzik, teknoloji vb.)": ("interests", "Kişinin ilgi alanlarını paylaşır mısınız?")
+                "Yaş aralığını belirtir misiniz?": ("age", "Aslında hediyeyi düşündüğünüz kişinin yaş aralığını bilmem çok yardımcı olacak. Genç biri mi yoksa yetişkin biri için mi bakıyorsunuz?"),
+                "Hediye alacağınız kişinin cinsiyeti nedir?": ("gender", "Bu hediyeyi bir erkek için mi yoksa bir kadın için mi düşünüyorsunuz? Bu bilgi önerilerimi daha isabetli yapacak."),
+                "Bu hediye özel bir gün için mi? (Doğum günü, yıl dönümü vb.)": ("special", "Merak ediyorum, bu hediye özel bir kutlama için mi? Doğum günü, yıldönümü veya başka özel bir gün olabilir mi?"),
+                "Kişinin ilgi alanlarından birkaçını paylaşır mısınız? (Örneğin, spor, müzik, teknoloji vb.)": ("interests", "Hediye düşündüğünüz kişi nelerden hoşlanır? Belki spor, müzik, kitap okumak ya da başka hobiler... Biraz bahsedebilir misiniz?")
             }
 
             first_missing = missing_fields[0]
-            field_key, next_prompt = field_messages.get(first_missing, ("unknown", "Eksik bilgi girin."))
+            field_key, next_prompt = field_messages.get(first_missing, ("unknown", "Bana biraz daha bilgi verebilir misiniz?"))
+
+            # Mesajları daha doğal hale getirmek için bir AI model kullanıyoruz
+            message_prompt = f"Şu mesajı doğal, sohbet tarzında ama kısa bir şekilde söyle: '{first_missing}'"
+            message_response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Sen bir hediye asistanısın. Kullanıcıyla doğal ve samimi bir şekilde konuşuyorsun."},
+                    {"role": "user", "content": message_prompt}
+                ]
+            )
+            
+            natural_message = message_response.choices[0].message.content.strip()
 
             return {
-                "message": first_missing,
+                "message": natural_message,
                 "field_key": field_key,
                 "filled_table": updated_data,
                 "next_prompt": next_prompt
             }
 
+        # Eğer bütçe belirtilmemişse ve diğer tüm alanlar dolmuşsa bütçe soralım
+        if not has_budget:
+            budget_prompt = "Hediye için düşündüğünüz bir bütçe var mı? Uygun önerilerim için bilmem yardımcı olur."
+            budget_next_prompt = "İsterseniz bir bütçe aralığı söyleyebilirsiniz, ya da bu kısmı geçebiliriz ve farklı fiyat aralıklarından öneriler gösteririm."
+            
+            return {
+                "message": budget_prompt,
+                "field_key": "budget",
+                "filled_table": updated_data,
+                "next_prompt": budget_next_prompt
+            }
+        
+        # Ürün önerileri için SQL sorgusu oluştur ve çalıştır
         product_recommendations = query_products(filled_filters.model_dump())
 
         if not product_recommendations["products"]:
+            no_products_prompt = "Hmm, aradığınız kriterlere tam uyan bir ürün bulamadım. Biraz daha geniş bir arama yapmamı ister misiniz?"
+            
             return {
-                "message": "Bu kriterlere uygun ürün bulunamadı, daha genel bir filtreleme yapmayı deneyelim mi?",
+                "message": no_products_prompt,
                 "filled_table": updated_data,
-                "next_prompt": "Lütfen filtreleri biraz daha esneterek tekrar deneyin."
+                "next_prompt": "Filtreleri biraz değiştirelim mi? Belki ilgi alanlarını genişletebilir veya farklı bir bütçe aralığı deneyebiliriz."
             }
 
+        success_message = "Harika! Size özel hediye önerilerim hazır. Umarım beğenirsiniz!"
+        
         return {
-            "message": "Ürün önerileri oluşturuldu!",
+            "message": success_message,
             "filled_table": updated_data,
             "recommendations": product_recommendations
         }
 
     except json.JSONDecodeError:
         return {
-            "error": "Yanıt JSON formatında değil.",
+            "error": "Üzgünüm, yanıtınızı anlayamadım. Lütfen tekrar dener misiniz?",
             "raw_response": raw_content
         }
     except Exception as e:
-        return {"error": f"Hata oluştu: {str(e)}"}
+        return {"error": f"Bir sorun oluştu: {str(e)}. Tekrar deneyebilir miyiz?"}
+
+@router.get("/products/{product_id}/images")
+async def get_product_images(
+    product_id: int, 
+    image_id: Optional[int] = None,
+    user = Depends(firebase_auth)  # Normal auth ekledim
+):
+    """
+    Ürün ID'sine göre resimleri getirir.
+    Eğer image_id belirtilirse sadece o resmi döndürür, aksi halde tüm resimlerin listesini döndürür.
+    Bu endpoint için normal kullanıcı kimlik doğrulaması gereklidir.
+    """
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        if image_id is not None:
+            # Belirli bir resmi getir
+            cur.execute(
+                "SELECT image_data FROM product_images WHERE product_id = %s AND id = %s ORDER BY image_order",
+                (product_id, image_id)
+            )
+            result = cur.fetchone()
+            
+            if not result:
+                raise HTTPException(status_code=404, detail="Belirtilen resim bulunamadı")
+            
+            image_data = result[0]
+            cur.close()
+            conn.close()
+            
+            # Binary resim verisini doğrudan döndür
+            return Response(content=bytes(image_data), media_type="image/png")
+        else:
+            # Ürüne ait tüm resimlerin listesini getir
+            cur.execute(
+                "SELECT id, image_order FROM product_images WHERE product_id = %s ORDER BY image_order",
+                (product_id,)
+            )
+            results = cur.fetchall()
+            
+            if not results:
+                raise HTTPException(status_code=404, detail="Bu ürüne ait resim bulunamadı")
+            
+            image_list = [{"image_id": row[0], "order": row[1], "url": f"/api/products/{product_id}/images?image_id={row[0]}"} for row in results]
+            cur.close()
+            conn.close()
+            
+            return {"product_id": product_id, "images": image_list}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Resim getirme hatası: {str(e)}")
+
+
+@router.get("/products/{product_id}/thumbnail")
+async def get_product_thumbnail(
+    product_id: int,
+    user = Depends(firebase_auth)  # Normal auth ekledim
+):
+    """
+    Ürün ID'sine göre ilk resmi (thumbnail) döndürür.
+    Bu endpoint için normal kullanıcı kimlik doğrulaması gereklidir.
+    """
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # İlk sıradaki resmi getir (image_order'a göre sıralı)
+        cur.execute(
+            "SELECT image_data FROM product_images WHERE product_id = %s ORDER BY image_order LIMIT 1",
+            (product_id,)
+        )
+        result = cur.fetchone()
+        
+        if not result:
+            # Eğer resim bulunamazsa default bir resim döndürülebilir
+            # Ya da 404 hatası verilebilir
+            raise HTTPException(status_code=404, detail="Bu ürüne ait resim bulunamadı")
+        
+        image_data = result[0]
+        cur.close()
+        conn.close()
+        
+        # Binary resim verisini doğrudan döndür
+        return Response(content=bytes(image_data), media_type="image/png")
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Thumbnail getirme hatası: {str(e)}")

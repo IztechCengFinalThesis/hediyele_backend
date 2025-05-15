@@ -6,9 +6,16 @@ from pathlib import Path
 import requests
 from fastapi import Request, HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+import base64
+
+# Decode FIREBASE_ADMIN_JSON_BASE64 env variable and write firebase_admin.json if present
+firebase_json_b64 = os.environ.get("FIREBASE_ADMIN_JSON_BASE64")
+if firebase_json_b64:
+    with open("firebase_admin.json", "wb") as f:
+        f.write(base64.b64decode(firebase_json_b64))
 
 # Get the absolute path to the Firebase credentials file
-credentials_path = Path(__file__).parent.parent.parent / "firebase_admin.json"
+credentials_path = "firebase_admin.json"
 
 # Initialize Firebase Admin SDK with credentials
 cred = credentials.Certificate(credentials_path)

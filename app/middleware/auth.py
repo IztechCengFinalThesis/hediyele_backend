@@ -8,6 +8,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     """
     Validates the token and returns the user information.
     """
+    
     try:
         decoded_token = verify_token(token)
         return decoded_token

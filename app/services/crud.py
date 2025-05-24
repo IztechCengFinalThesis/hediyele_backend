@@ -39,20 +39,22 @@ def query_products(filters: Dict[str, bool]):
         "interest_home_decor": 1.0,
         "interest_movies_tv": 1.0
     }
-    offset = 0.1
+
+    NORMALIZE = 10.0
+    EPS = 1e-6
     expression_parts = []
 
     for key, value in filters.items():
         if key in weights and value:
             weight = weights.get(key, 1.0)
-            expression_parts.append(f"({weight} * (COALESCE({key}, 0) + {offset}))")
+            expression_parts.append(f"{weight} * POWER((COALESCE({key}, 0)/{NORMALIZE}) - 1, 2)")
 
     if not expression_parts:
         return {"message": "No filters selected", "products": []}
 
-    sum_expr = " + ".join(expression_parts)
+    diff_sum = " + ".join(expression_parts)
+    score_expr = f"(1 / (1 + SQRT({diff_sum})))"
 
-    # �� Fiyat filtresi SQL'e eklendi
     price_clause = ""
     if "min_budget" in filters and filters["min_budget"] is not None:
         price_clause += f" AND p.price >= {filters['min_budget']}"
@@ -60,7 +62,7 @@ def query_products(filters: Dict[str, bool]):
         price_clause += f" AND p.price <= {filters['max_budget']}"
 
     query = f"""
-        SELECT p.id, p.product_name, p.price, p.site, p.link, ({sum_expr}) AS score
+        SELECT p.id, p.product_name, p.price, p.site, p.link, ({score_expr}) AS score
         FROM product p
         JOIN product_features pf ON p.product_features_id = pf.id
         WHERE 1=1 {price_clause}

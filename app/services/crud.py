@@ -41,7 +41,6 @@ def query_products(filters: Dict[str, bool]):
     }
 
     NORMALIZE = 10.0
-    EPS = 1e-6
     expression_parts = []
 
     for key, value in filters.items():
@@ -62,7 +61,7 @@ def query_products(filters: Dict[str, bool]):
         price_clause += f" AND p.price <= {filters['max_budget']}"
 
     query = f"""
-        SELECT p.id, p.product_name, p.price, p.site, p.link, ({score_expr}) AS score
+        SELECT p.id, p.product_name, p.price, p.site, p.link, ({score_expr}) AS score, is_last_7_days_lower_price, is_last_30_days_lower_price
         FROM product p
         JOIN product_features pf ON p.product_features_id = pf.id
         WHERE 1=1 {price_clause}
@@ -81,9 +80,11 @@ def query_products(filters: Dict[str, bool]):
                     "price": float(row[2]) if row[2] is not None else 0.0, 
                     "site": row[3] if row[3] is not None else "",
                     "link": row[4] if row[4] is not None else "",
-                    "score": float(row[5]) if row[5] is not None else 0.0
+                    "score": float(row[5]) if row[5] is not None else 0.0,
+                    "is_last_7_days_lower_price": row[6],
+                    "is_last_30_days_lower_price": row[7]
                 } for row in products
-            ]
+            ],
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

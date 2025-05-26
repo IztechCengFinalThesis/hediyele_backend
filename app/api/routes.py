@@ -248,14 +248,21 @@ async def get_premium_recommendations(
             }
 
             first_missing = missing_fields[0]
-            field_key, next_prompt = field_messages.get(first_missing, ("unknown", "Bana biraz daha bilgi verebilir misiniz?"))
+            field_key, _ = field_messages.get(first_missing, ("unknown", "Bana biraz daha bilgi verebilir misiniz?"))
 
-            # Mesajları daha doğal hale getirmek için bir AI model kullanıyoruz
-            message_prompt = f"Şu mesajı doğal, sohbet tarzında ama kısa bir şekilde söyle: '{first_missing}'"
+            # Check if the input is in English
+            is_english = any(word in user_input.lower() for word in ['what', 'who', 'where', 'when', 'why', 'how', 'can', 'could', 'would', 'should', 'please', 'thank'])
+
+            # Create appropriate prompt based on language
+            if is_english:
+                message_prompt = f"Convert this message to a natural, conversational English response: '{first_missing}'"
+            else:
+                message_prompt = f"Şu mesajı doğal, sohbet tarzında ama kısa bir şekilde söyle: '{first_missing}'"
+
             message_response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "Sen bir hediye asistanısın. Kullanıcıyla doğal ve samimi bir şekilde konuşuyorsun."},
+                    {"role": "system", "content": "You are a gift assistant. Respond naturally and conversationally in the same language as the user's input."},
                     {"role": "user", "content": message_prompt}
                 ]
             )
@@ -265,35 +272,49 @@ async def get_premium_recommendations(
             return {
                 "message": natural_message,
                 "field_key": field_key,
-                "filled_table": updated_data,
-                "next_prompt": next_prompt
+                "filled_table": updated_data
             }
 
         # Eğer bütçe belirtilmemişse ve diğer tüm alanlar dolmuşsa bütçe soralım
         if not has_budget:
-            budget_prompt = "Hediye için düşündüğünüz bir bütçe var mı? Uygun önerilerim için bilmem yardımcı olur."
-            budget_next_prompt = "İsterseniz bir bütçe aralığı söyleyebilirsiniz, ya da bu kısmı geçebiliriz ve farklı fiyat aralıklarından öneriler gösteririm."
+            # Check if the input is in English
+            is_english = any(word in user_input.lower() for word in ['what', 'who', 'where', 'when', 'why', 'how', 'can', 'could', 'would', 'should', 'please', 'thank'])
+            
+            if is_english:
+                budget_prompt = "Do you have a budget in mind for the gift? It would help me make better recommendations."
+            else:
+                budget_prompt = "Hediye için düşündüğünüz bir bütçe var mı? Uygun önerilerim için bilmem yardımcı olur."
             
             return {
                 "message": budget_prompt,
                 "field_key": "budget",
-                "filled_table": updated_data,
-                "next_prompt": budget_next_prompt
+                "filled_table": updated_data
             }
         
         # Ürün önerileri için SQL sorgusu oluştur ve çalıştır
         product_recommendations = query_products(filled_filters.model_dump())
 
         if not product_recommendations["products"]:
-            no_products_prompt = "Hmm, aradığınız kriterlere tam uyan bir ürün bulamadım. Biraz daha geniş bir arama yapmamı ister misiniz?"
+            # Check if the input is in English
+            is_english = any(word in user_input.lower() for word in ['what', 'who', 'where', 'when', 'why', 'how', 'can', 'could', 'would', 'should', 'please', 'thank'])
+            
+            if is_english:
+                no_products_prompt = "Hmm, I couldn't find any products that exactly match your criteria. Would you like me to try a broader search?"
+            else:
+                no_products_prompt = "Hmm, aradığınız kriterlere tam uyan bir ürün bulamadım. Biraz daha geniş bir arama yapmamı ister misiniz?"
             
             return {
                 "message": no_products_prompt,
-                "filled_table": updated_data,
-                "next_prompt": "Filtreleri biraz değiştirelim mi? Belki ilgi alanlarını genişletebilir veya farklı bir bütçe aralığı deneyebiliriz."
+                "filled_table": updated_data
             }
 
-        success_message = "Harika! Size özel hediye önerilerim hazır. Umarım beğenirsiniz!"
+        # Check if the input is in English
+        is_english = any(word in user_input.lower() for word in ['what', 'who', 'where', 'when', 'why', 'how', 'can', 'could', 'would', 'should', 'please', 'thank'])
+        
+        if is_english:
+            success_message = "Great! I've prepared some gift recommendations just for you. I hope you like them!"
+        else:
+            success_message = "Harika! Size özel hediye önerilerim hazır. Umarım beğenirsiniz!"
         
         return {
             "message": success_message,

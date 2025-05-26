@@ -193,9 +193,13 @@ async def get_premium_recommendations(
         2. Eğer kullanıcı tek bir değer belirttiyse (örn. "500 TL civarı" gibi) bir aralık oluştur:
            - min_budget = belirtilen değerin %20 altı
            - max_budget = belirtilen değerin %20 üstü
-        3. Eğer kullanıcı "ucuz olsun" gibi belirsiz ifadeler kullandıysa, min_budget=0, max_budget=300 gibi belirleme yapabilirsin.
+        3. Eğer kullanıcı "ucuz olsun" gibi belirsiz ifadeler kullandıysa, min_budget=0, max_budget=500 gibi belirleme yapabilirsin.
         4. Eğer kullanıcı "pahalı olsun" veya "lüks" gibi ifadeler kullandıysa, min_budget=1000 gibi bir alt sınır belirleyebilirsin.
         5. Kullanıcı bütçe konusunda hiçbir şey söylemediyse, min_budget ve max_budget'i null bırak.
+
+        ÖZEL GÜN KURALLARI:
+        1. Eğer kullanıcı özel bir gün istemediğini belirttiğinde veya farklı bir özel gün belirttiğinde, special_other'ı True yap.
+        2. Eğer kullanıcı doğum günü, yıl dönümü gibi standart özel günlerden birini belirttiğinde, ilgili alanı True yap ve special_other'ı False yap.
         
         JSON formatında sadece güncellenmiş tabloyu döndür.
         """

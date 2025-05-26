@@ -250,8 +250,18 @@ async def get_premium_recommendations(
             first_missing = missing_fields[0]
             field_key, _ = field_messages.get(first_missing, ("unknown", "Bana biraz daha bilgi verebilir misiniz?"))
 
-            # Check if the input is in English
-            is_english = any(word in user_input.lower() for word in ['what', 'who', 'where', 'when', 'why', 'how', 'can', 'could', 'would', 'should', 'please', 'thank', 'hello', 'hi', 'hey', 'yes', 'no', 'maybe', 'okay', 'ok', 'fine', 'good', 'bad', 'great', 'awesome', 'nice', 'well', 'better', 'best', 'worse', 'worst', 'help', 'need', 'want', 'like', 'love', 'hate', 'think', 'feel', 'know', 'understand', 'remember', 'forget', 'try', 'start', 'begin', 'end', 'finish', 'stop', 'continue', 'go', 'come', 'give', 'take', 'make', 'do', 'have', 'has', 'had', 'will', 'shall', 'must', 'may', 'might', 'let', 'tell', 'say', 'speak', 'talk', 'ask', 'answer', 'reply', 'respond', 'write', 'read', 'listen', 'hear', 'see', 'watch', 'look', 'find', 'search', 'seek', 'buy', 'sell', 'pay', 'cost', 'price', 'money', 'dollar', 'cent', 'pound', 'euro', 'time', 'day', 'week', 'month', 'year', 'today', 'tomorrow', 'yesterday', 'now', 'then', 'soon', 'later', 'early', 'late', 'fast', 'slow', 'quick', 'quickly', 'slowly', 'carefully', 'well', 'good', 'bad', 'better', 'best', 'worse', 'worst', 'much', 'many', 'more', 'most', 'less', 'least', 'few', 'little', 'some', 'any', 'all', 'none', 'both', 'either', 'neither', 'each', 'every', 'other', 'another', 'such', 'same', 'different', 'similar', 'like', 'unlike', 'same', 'different', 'similar', 'like', 'unlike', 'same', 'different', 'similar', 'like', 'unlike', 'is', 'are'])
+            # Check if the input is in English using AI
+            language_detection_prompt = f"Determine if the following text is in English. Respond with only 'true' or 'false': '{user_input}'"
+            
+            language_response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a language detection assistant. Respond with only 'true' for English text and 'false' for non-English text."},
+                    {"role": "user", "content": language_detection_prompt}
+                ]
+            )
+            
+            is_english = language_response.choices[0].message.content.strip().lower() == 'true'
 
             # Create appropriate prompt based on language
             if is_english:
@@ -277,9 +287,19 @@ async def get_premium_recommendations(
 
         # Eğer bütçe belirtilmemişse ve diğer tüm alanlar dolmuşsa bütçe soralım
         if not has_budget:
-            # Check if the input is in English
-            is_english = any(word in user_input.lower() for word in ['what', 'who', 'where', 'when', 'why', 'how', 'can', 'could', 'would', 'should', 'please', 'thank', 'hello', 'hi', 'hey', 'yes', 'no', 'maybe', 'okay', 'ok', 'fine', 'good', 'bad', 'great', 'awesome', 'nice', 'well', 'better', 'best', 'worse', 'worst', 'help', 'need', 'want', 'like', 'love', 'hate', 'think', 'feel', 'know', 'understand', 'remember', 'forget', 'try', 'start', 'begin', 'end', 'finish', 'stop', 'continue', 'go', 'come', 'give', 'take', 'make', 'do', 'have', 'has', 'had', 'will', 'shall', 'must', 'may', 'might', 'let', 'tell', 'say', 'speak', 'talk', 'ask', 'answer', 'reply', 'respond', 'write', 'read', 'listen', 'hear', 'see', 'watch', 'look', 'find', 'search', 'seek', 'buy', 'sell', 'pay', 'cost', 'price', 'money', 'dollar', 'cent', 'pound', 'euro', 'time', 'day', 'week', 'month', 'year', 'today', 'tomorrow', 'yesterday', 'now', 'then', 'soon', 'later', 'early', 'late', 'fast', 'slow', 'quick', 'quickly', 'slowly', 'carefully', 'well', 'good', 'bad', 'better', 'best', 'worse', 'worst', 'much', 'many', 'more', 'most', 'less', 'least', 'few', 'little', 'some', 'any', 'all', 'none', 'both', 'either', 'neither', 'each', 'every', 'other', 'another', 'such', 'same', 'different', 'similar', 'like', 'unlike', 'same', 'different', 'similar', 'like', 'unlike', 'is', 'are'])
+            # Check if the input is in English using AI
+            language_detection_prompt = f"Determine if the following text is in English. Respond with only 'true' or 'false': '{user_input}'"
             
+            language_response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a language detection assistant. Respond with only 'true' for English text and 'false' for non-English text."},
+                    {"role": "user", "content": language_detection_prompt}
+                ]
+            )
+            
+            is_english = language_response.choices[0].message.content.strip().lower() == 'true'
+
             if is_english:
                 budget_prompt = "Do you have a budget in mind for the gift? It would help me make better recommendations."
             else:
@@ -295,9 +315,19 @@ async def get_premium_recommendations(
         product_recommendations = query_products(filled_filters.model_dump())
 
         if not product_recommendations["products"]:
-            # Check if the input is in English
-            is_english = any(word in user_input.lower() for word in ['what', 'who', 'where', 'when', 'why', 'how', 'can', 'could', 'would', 'should', 'please', 'thank', 'hello', 'hi', 'hey', 'yes', 'no', 'maybe', 'okay', 'ok', 'fine', 'good', 'bad', 'great', 'awesome', 'nice', 'well', 'better', 'best', 'worse', 'worst', 'help', 'need', 'want', 'like', 'love', 'hate', 'think', 'feel', 'know', 'understand', 'remember', 'forget', 'try', 'start', 'begin', 'end', 'finish', 'stop', 'continue', 'go', 'come', 'give', 'take', 'make', 'do', 'have', 'has', 'had', 'will', 'shall', 'must', 'may', 'might', 'let', 'tell', 'say', 'speak', 'talk', 'ask', 'answer', 'reply', 'respond', 'write', 'read', 'listen', 'hear', 'see', 'watch', 'look', 'find', 'search', 'seek', 'buy', 'sell', 'pay', 'cost', 'price', 'money', 'dollar', 'cent', 'pound', 'euro', 'time', 'day', 'week', 'month', 'year', 'today', 'tomorrow', 'yesterday', 'now', 'then', 'soon', 'later', 'early', 'late', 'fast', 'slow', 'quick', 'quickly', 'slowly', 'carefully', 'well', 'good', 'bad', 'better', 'best', 'worse', 'worst', 'much', 'many', 'more', 'most', 'less', 'least', 'few', 'little', 'some', 'any', 'all', 'none', 'both', 'either', 'neither', 'each', 'every', 'other', 'another', 'such', 'same', 'different', 'similar', 'like', 'unlike', 'same', 'different', 'similar', 'like', 'unlike', 'is', 'are'])
+            # Check if the input is in English using AI
+            language_detection_prompt = f"Determine if the following text is in English. Respond with only 'true' or 'false': '{user_input}'"
             
+            language_response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a language detection assistant. Respond with only 'true' for English text and 'false' for non-English text."},
+                    {"role": "user", "content": language_detection_prompt}
+                ]
+            )
+            
+            is_english = language_response.choices[0].message.content.strip().lower() == 'true'
+
             if is_english:
                 no_products_prompt = "Hmm, I couldn't find any products that exactly match your criteria. Would you like me to try a broader search?"
             else:
@@ -308,9 +338,19 @@ async def get_premium_recommendations(
                 "filled_table": updated_data
             }
 
-        # Check if the input is in English
-        is_english = any(word in user_input.lower() for word in ['what', 'who', 'where', 'when', 'why', 'how', 'can', 'could', 'would', 'should', 'please', 'thank', 'hello', 'hi', 'hey', 'yes', 'no', 'maybe', 'okay', 'ok', 'fine', 'good', 'bad', 'great', 'awesome', 'nice', 'well', 'better', 'best', 'worse', 'worst', 'help', 'need', 'want', 'like', 'love', 'hate', 'think', 'feel', 'know', 'understand', 'remember', 'forget', 'try', 'start', 'begin', 'end', 'finish', 'stop', 'continue', 'go', 'come', 'give', 'take', 'make', 'do', 'have', 'has', 'had', 'will', 'shall', 'must', 'may', 'might', 'let', 'tell', 'say', 'speak', 'talk', 'ask', 'answer', 'reply', 'respond', 'write', 'read', 'listen', 'hear', 'see', 'watch', 'look', 'find', 'search', 'seek', 'buy', 'sell', 'pay', 'cost', 'price', 'money', 'dollar', 'cent', 'pound', 'euro', 'time', 'day', 'week', 'month', 'year', 'today', 'tomorrow', 'yesterday', 'now', 'then', 'soon', 'later', 'early', 'late', 'fast', 'slow', 'quick', 'quickly', 'slowly', 'carefully', 'well', 'good', 'bad', 'better', 'best', 'worse', 'worst', 'much', 'many', 'more', 'most', 'less', 'least', 'few', 'little', 'some', 'any', 'all', 'none', 'both', 'either', 'neither', 'each', 'every', 'other', 'another', 'such', 'same', 'different', 'similar', 'like', 'unlike', 'same', 'different', 'similar', 'like', 'unlike', 'is', 'are'])
+        # Check if the input is in English using AI
+        language_detection_prompt = f"Determine if the following text is in English. Respond with only 'true' or 'false': '{user_input}'"
         
+        language_response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a language detection assistant. Respond with only 'true' for English text and 'false' for non-English text."},
+                {"role": "user", "content": language_detection_prompt}
+            ]
+        )
+        
+        is_english = language_response.choices[0].message.content.strip().lower() == 'true'
+
         if is_english:
             success_message = "Great! I've prepared some gift recommendations just for you. I hope you like them!"
         else:
